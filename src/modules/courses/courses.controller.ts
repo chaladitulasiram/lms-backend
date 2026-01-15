@@ -21,7 +21,7 @@ export class CoursesController {
     @Post(':id/modules')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('MENTOR')
-    async addModule(@Param('id') courseId: string, @Body() body: { title: string; content: string }) {
+    async addModule(@Param('id') courseId: string, @Body() body: { title: string; content: string; videoUrl?: string }) {
         return this.coursesService.addModule(courseId, body);
     }
 

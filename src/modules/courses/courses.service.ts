@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaClient, Course, Module as CourseModule } from '@prisma/client';
+import { PrismaService } from '../../prisma.service'; // <--- Import Shared Service
+import { Course, Module as CourseModule } from '@prisma/client';
 
 @Injectable()
 export class CoursesService {
-    private prisma = new PrismaClient();
+    // Inject the service. DO NOT use 'new PrismaClient()'
+    constructor(private prisma: PrismaService) { }
 
     // 1. Create a Course (Mentors Only)
     async createCourse(data: { title: string; description: string }, mentorId: string): Promise<Course> {
@@ -16,13 +18,15 @@ export class CoursesService {
     }
 
     // 2. Add a Module/Lesson to a Course (Mentors Only)
-    async addModule(courseId: string, data: { title: string; content: string }): Promise<CourseModule> {
+    async addModule(courseId: string, data: { title: string; content: string; videoUrl?: string }): Promise<CourseModule> {
         const course = await this.prisma.course.findUnique({ where: { id: courseId } });
         if (!course) throw new NotFoundException('Course not found');
 
         return this.prisma.module.create({
             data: {
-                ...data,
+                title: data.title,
+                content: data.content,
+                videoUrl: data.videoUrl || null,
                 courseId: courseId,
             },
         });
@@ -44,7 +48,7 @@ export class CoursesService {
             where: { id },
             include: {
                 modules: {
-                    orderBy: { title: 'asc' } // Optional: Sort modules if needed
+                    orderBy: { title: 'asc' } // Sorts lessons by title
                 },
                 mentor: {
                     select: { email: true, id: true }

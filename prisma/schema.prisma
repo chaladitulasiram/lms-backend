@@ -19,40 +19,115 @@ enum UserRole {
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
-  password  String   // Hashed using Bcrypt [cite: 23]
+  password  String   // Hashed using Bcrypt
+  name      String?  // Optional user name
   role      UserRole @default(STUDENT)
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   // Relations
-  coursesOwned    Course[]      @relation("MentorCourses")
+  coursesOwned    Course[]       @relation("MentorCourses")
   enrollments     Enrollment[]
+  submissions     Submission[]
+  certificates    Certificate[]
 }
 
 model Course {
   id          String   @id @default(uuid())
   title       String
   description String
+  thumbnail   String?  // Course thumbnail URL
   mentorId    String
   mentor      User     @relation("MentorCourses", fields: [mentorId], references: [id])
   modules     Module[]
+  isPublished Boolean  @default(true)
 
-  createdAt   DateTime @default(now())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @default(now()) @updatedAt
   enrollments Enrollment[]
+  certificates Certificate[]
 }
 
 model Module {
-  id       String @id @default(uuid())
-  title    String
-  content  String
-  courseId String
-  course   Course @relation(fields: [courseId], references: [id])
+  id          String       @id @default(uuid())
+  title       String
+  content     String       @db.Text
+  videoUrl    String?
+  order       Int          @default(0)
+  duration    Int?         // Duration in minutes
+  courseId    String
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @default(now()) @updatedAt
+}
+
+model Assignment {
+  id          String       @id @default(uuid())
+  title       String
+  description String       @db.Text
+  dueDate     DateTime?
+  maxScore    Float        @default(100)
+  moduleId    String
+  module      Module       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @default(now()) @updatedAt
+}
+
+model Submission {
+  id           String     @id @default(uuid())
+  content      String     @db.Text
+  fileUrl      String?
+  score        Float?
+  feedback     String?    @db.Text
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      User       @relation(fields: [studentId], references: [id])
+  submittedAt  DateTime   @default(now())
+  gradedAt     DateTime?
+  
+  @@unique([assignmentId, studentId])
 }
 
 model Enrollment {
-  id        String   @id @default(uuid())
-  userId    String
-  courseId  String
-  user      User     @relation(fields: [userId], references: [id])
-  course    Course   @relation(fields: [courseId], references: [id])
-  progress  Float    @default(0.0) // For tracking progress [cite: 6]
+  id           String   @id @default(uuid())
+  userId       String
+  courseId     String
+  user         User     @relation(fields: [userId], references: [id])
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress     Float    @default(0.0)
+  lastAccessed DateTime @default(now())
+  completedAt  DateTime?
+  enrolledAt   DateTime @default(now())
+  
+  @@unique([userId, courseId])
+}
+
+model Analytics {
+  id                String   @id @default(uuid())
+  totalStudents     Int      @default(0)
+  totalMentors      Int      @default(0)
+  totalAdmins       Int      @default(0)
+  activeCourses     Int      @default(0)
+  totalEnrollments  Int      @default(0)
+  completionRate    Float    @default(0)
+  averageProgress   Float    @default(0)
+  revenue           Float    @default(0)
+  date              DateTime @default(now())
+  createdAt         DateTime @default(now())
+}
+
+model Certificate {
+  id             String   @id @default(uuid())
+  studentId      String
+  student        User     @relation(fields: [studentId], references: [id])
+  courseId       String
+  course         Course   @relation(fields: [courseId], references: [id])
+  certificateUrl String?
+  certificateNumber String @unique
+  issuedAt       DateTime @default(now())
+  
+  @@unique([studentId, courseId])
 }
