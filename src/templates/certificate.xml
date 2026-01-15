@@ -1,0 +1,6 @@
+<certificate>
+  <title>Course Completion</title>
+  <student>{{studentName}}</student>
+  <course>{{course}}</course>
+  <date>{{date}}</date>
+</certificate>

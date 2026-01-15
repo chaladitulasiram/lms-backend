@@ -1,0 +1,58 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Enum for Strict Role-Based Access Control 
+enum UserRole {
+  ADMIN
+  MENTOR
+  STUDENT
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Hashed using Bcrypt [cite: 23]
+  role      UserRole @default(STUDENT)
+  createdAt DateTime @default(now())
+
+  // Relations
+  coursesOwned    Course[]      @relation("MentorCourses")
+  enrollments     Enrollment[]
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  mentorId    String
+  mentor      User     @relation("MentorCourses", fields: [mentorId], references: [id])
+  modules     Module[]
+
+  createdAt   DateTime @default(now())
+  enrollments Enrollment[]
+}
+
+model Module {
+  id       String @id @default(uuid())
+  title    String
+  content  String
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id])
+}
+
+model Enrollment {
+  id        String   @id @default(uuid())
+  userId    String
+  courseId  String
+  user      User     @relation(fields: [userId], references: [id])
+  course    Course   @relation(fields: [courseId], references: [id])
+  progress  Float    @default(0.0) // For tracking progress [cite: 6]
+}
