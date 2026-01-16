@@ -17,19 +17,24 @@ enum UserRole {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String   // Hashed using Bcrypt
-  name      String?  // Optional user name
-  role      UserRole @default(STUDENT)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String   // Hashed using Bcrypt
+  name        String?  // Full name
+  phone       String?  // Phone number
+  designation String?  // Job title/designation
+  avatar      String?  // Profile picture URL
+  bio         String?  @db.Text // User biography
+  role        UserRole @default(STUDENT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
 
   // Relations
   coursesOwned    Course[]       @relation("MentorCourses")
   enrollments     Enrollment[]
   submissions     Submission[]
   certificates    Certificate[]
+  courseRatings   CourseRating[]
 }
 
 model Course {
@@ -42,10 +47,11 @@ model Course {
   modules     Module[]
   isPublished Boolean  @default(true)
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @default(now()) @updatedAt
-  enrollments Enrollment[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @default(now()) @updatedAt
+  enrollments  Enrollment[]
   certificates Certificate[]
+  ratings      CourseRating[]
 }
 
 model Module {
@@ -92,15 +98,29 @@ model Submission {
 }
 
 model Enrollment {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   userId       String
   courseId     String
-  user         User     @relation(fields: [userId], references: [id])
-  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  progress     Float    @default(0.0)
-  lastAccessed DateTime @default(now())
-  completedAt  DateTime?
-  enrolledAt   DateTime @default(now())
+  user         User      @relation(fields: [userId], references: [id])
+  course       Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress     Float     @default(0.0) // Percentage 0-100
+  lastAccessed DateTime  @default(now())
+  completedAt  DateTime? // When the course was completed
+  enrolledAt   DateTime  @default(now())
+  
+  @@unique([userId, courseId])
+}
+
+model CourseRating {
+  id         String   @id @default(uuid())
+  userId     String
+  courseId   String
+  rating     Int      // 1-5 stars
+  review     String?  @db.Text
+  user       User     @relation(fields: [userId], references: [id])
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
   
   @@unique([userId, courseId])
 }

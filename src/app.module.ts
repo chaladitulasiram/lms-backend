@@ -5,6 +5,8 @@ import { AppService } from './app.service';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CoursesModule } from './modules/courses/courses.module';
+import { AssignmentsModule } from './modules/assignments/assignments.module';
+import { CertificatesModule } from './modules/certificates/certificates.module';
 import { AiInsightsModule } from './modules/ai-insights/ai-insights.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -22,6 +24,8 @@ import { PrismaService } from './prisma.service';
     UsersModule,
     AuthModule,
     CoursesModule,
+    AssignmentsModule,
+    CertificatesModule,
     AiInsightsModule,
     DocumentsModule,
     AdminModule,

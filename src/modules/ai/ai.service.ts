@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Ollama } from 'ollama';
+import Groq from 'groq-sdk';
 import { RedisService } from '../../redis/redis.service';
 
 @Injectable()
 export class AiService {
     private readonly logger = new Logger(AiService.name);
-    private ollama: Ollama;
+    private groq: Groq;
     private readonly model: string;
     private readonly cacheEnabled: boolean;
 
@@ -14,16 +14,22 @@ export class AiService {
         private configService: ConfigService,
         private redisService: RedisService,
     ) {
-        // Initialize Ollama client
-        this.ollama = new Ollama({
-            host: this.configService.get('OLLAMA_HOST', 'http://localhost:11434'),
+        // Initialize Groq client
+        const apiKey = this.configService.get('GROQ_API_KEY');
+
+        if (!apiKey) {
+            this.logger.warn('GROQ_API_KEY not found. AI features will be disabled.');
+        }
+
+        this.groq = new Groq({
+            apiKey: apiKey,
         });
 
-        // Use Qwen or Llama model
-        this.model = this.configService.get('AI_MODEL', 'qwen2.5:latest');
+        // Use Groq's fast model
+        this.model = 'llama-3.3-70b-versatile';
         this.cacheEnabled = this.configService.get('AI_CACHE_ENABLED', 'true') === 'true';
 
-        this.logger.log(`AI Service initialized with model: ${this.model}`);
+        this.logger.log(`AI Service initialized with Groq model: ${this.model}`);
     }
 
     /**
@@ -69,7 +75,7 @@ Format your response in a friendly, encouraging tone.`;
             return response;
         } catch (error) {
             this.logger.error('Error analyzing performance:', error);
-            return 'Unable to generate performance analysis at this time. Please try again later.';
+            return 'Unable to generate performance analysis at this time. Please ensure your Groq API key is valid.';
         }
     }
 
@@ -243,26 +249,34 @@ Keep it concise and actionable (max 250 words).`;
     }
 
     /**
-     * Core method to generate completions using Ollama
+     * Core method to generate completions using Groq
      */
     private async generateCompletion(prompt: string): Promise<string> {
         try {
-            const response = await this.ollama.generate({
+            const chatCompletion = await this.groq.chat.completions.create({
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt,
+                    },
+                ],
                 model: this.model,
-                prompt: prompt,
-                stream: false,
+                temperature: 0.7,
+                max_tokens: 1024,
             });
 
-            return response.response;
+            return chatCompletion.choices[0]?.message?.content || 'No response generated';
         } catch (error) {
-            this.logger.error('Ollama API error:', error);
+            this.logger.error('Groq API error:', error);
 
-            // Fallback message if Ollama is not available
-            if (error.code === 'ECONNREFUSED') {
-                throw new Error('AI service is currently unavailable. Please ensure Ollama is running.');
+            // Provide helpful error messages
+            if (error.status === 401) {
+                throw new Error('Invalid Groq API key. Please check your GROQ_API_KEY in .env file.');
+            } else if (error.status === 429) {
+                throw new Error('Groq API rate limit exceeded. Please try again later.');
             }
 
-            throw error;
+            throw new Error('AI service is currently unavailable. Please try again later.');
         }
     }
 
@@ -271,7 +285,12 @@ Keep it concise and actionable (max 250 words).`;
      */
     async healthCheck(): Promise<boolean> {
         try {
-            await this.ollama.list();
+            // Test with a simple completion
+            await this.groq.chat.completions.create({
+                messages: [{ role: 'user', content: 'test' }],
+                model: this.model,
+                max_tokens: 5,
+            });
             return true;
         } catch (error) {
             this.logger.error('AI service health check failed:', error);
